@@ -26,10 +26,10 @@ temp = ["K", "Q", "J", "Kb", "Kp", "Qb", "Qp", "Jb", "Jp", "Kpb", "Qpb", "Jpb"]
 
 class InfoSet:
 
-    def __init__(self, infoSet):
-        self.infoSet = infoSet
-        self.bet = strategy[temp.index(infoSet)][0]
-        self.fold = strategy[temp.index(infoSet)][1]
+    def __init__(self, info):
+        self.infoSet = info
+        self.bet = strategy[temp.index(info)][0]
+        self.fold = strategy[temp.index(info)][1]
         self.gains = [0, 0]
 
     def findBelief(self):
@@ -69,7 +69,6 @@ class InfoSet:
         if  CARDS.index(cur_card) > CARDS.index(cards[1]):
             c2 *= -1
         cost *= -1
-        cost2 = cost
 
         a = beliefs[temp.index(self.infoSet)][0]
         b = beliefs[temp.index(self.infoSet)][1]
