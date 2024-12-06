@@ -1,6 +1,6 @@
 strategy = [[0 for x in range(2)] for y in range(12)]
-beliefs = [[0 for a in range(2)] for b in range(12)]
-utilities = [[0 for c in range(2)] for d in range(12)]
+beliefs = [[0 for x in range(2)] for y in range(12)]
+utilities = [[0 for x in range(2)] for y in range(12)]
 
 strategy[0][0] = 2/3
 strategy[1][0] = 1/2
@@ -53,7 +53,10 @@ class InfoSet:
                 a = infoSets.get(cards[0]).fold
                 b = infoSets.get(cards[1]).fold
 
-        belief[0] = a/(a+b)
+        if a > 0:
+            belief[0] = a/(a+b)
+        else:
+            belief[0] = 0
         belief[1] = 1 - belief[0]
         return belief
 
@@ -128,15 +131,15 @@ class InfoSet:
         cards = [card for card in CARDS if card != cur_card]
         c = utilities[temp.index(self.infoSet)][0]*self.bet + utilities[temp.index(self.infoSet)][1]*self.fold
         if len(self.infoSet) == 1:
-            self.gains[0] = max(1/3*(utilities[temp.index(self.infoSet)][0]-c), 0)
-            self.gains[1] = max(1/3*(utilities[temp.index(self.infoSet)][1]-c), 0)
+            self.gains[0] += max(1/3*(utilities[temp.index(self.infoSet)][0]-c), 0)
+            self.gains[1] += max(1/3*(utilities[temp.index(self.infoSet)][1]-c), 0)
         else:
             if self.infoSet[len(self.infoSet)-1] == "b":
-                self.gains[0] = max(1/6*(strategy[temp.index(cards[0])][0]+strategy[temp.index(cards[1])][0])*(utilities[temp.index(self.infoSet)][0]-c), 0)
-                self.gains[1] = max(1/6*(strategy[temp.index(cards[0])][0]+strategy[temp.index(cards[1])][0])*(utilities[temp.index(self.infoSet)][1]-c), 0)
+                self.gains[0] += max(1/6*(strategy[temp.index(cards[0])][0]+strategy[temp.index(cards[1])][0])*(utilities[temp.index(self.infoSet)][0]-c), 0)
+                self.gains[1] += max(1/6*(strategy[temp.index(cards[0])][0]+strategy[temp.index(cards[1])][0])*(utilities[temp.index(self.infoSet)][1]-c), 0)
             else:
-                self.gains[0] = max(1/6*(strategy[temp.index(cards[0])][1]+strategy[temp.index(cards[1])][1])*(utilities[temp.index(self.infoSet)][0]-c), 0)
-                self.gains[1] = max(1/6*(strategy[temp.index(cards[0])][1]+strategy[temp.index(cards[1])][1])*(utilities[temp.index(self.infoSet)][1]-c), 0)
+                self.gains[0] += max(1/6*(strategy[temp.index(cards[0])][1]+strategy[temp.index(cards[1])][1])*(utilities[temp.index(self.infoSet)][0]-c), 0)
+                self.gains[1] += max(1/6*(strategy[temp.index(cards[0])][1]+strategy[temp.index(cards[1])][1])*(utilities[temp.index(self.infoSet)][1]-c), 0)
 
 
 infoSets: dict[str, InfoSet] = {}
@@ -148,34 +151,45 @@ for i in range(3):
         infoSets[CARDS[i] + MOVE[j]] = InfoSet(CARDS[i] + MOVE[j])
 
 # Perform CFR for a fixed number of iterations
-iterations = 2  # Number of iterations to refine strategies
+iterations = 100000  # Number of iterations to refine strategies
+lastGains = 0
 
-for _ in range(iterations):
+for k in range(iterations):
     # Step 1: Recalculate beliefs for all information sets
     for key, infoSet in infoSets.items():
         beliefs[temp.index(infoSet.infoSet)] = list(infoSet.findBelief().values())
 
     # Step 2: Recalculate utilities for all information sets
-    for key, infoSet in infoSets.items():
-        utilities[temp.index(infoSet.infoSet)] = list(infoSet.findUtility().values())
+    for i in range(12):
+        utilities[11-i] = list(infoSets.get(temp[11-i]).findUtility().values())
 
+    totalGains = 0
     # Step 3: Update strategies based on gains
     for key, infoSet in infoSets.items():
         infoSet.calculateGains()
         idx = temp.index(infoSet.infoSet)
+        normalization_factor = infoSet.gains[0] + infoSet.gains[1]
+        totalGains += normalization_factor
 
-        # Update strategy using gains
-        strategy[idx][0] = infoSet.gains[0]
-        strategy[idx][1] = infoSet.gains[1]
-
-        # Normalize strategy to ensure probabilities sum to 1
-        normalization_factor = strategy[idx][0] + strategy[idx][1]
         if normalization_factor > 0:
+            # Update strategy using gains
+            strategy[idx][0] = infoSet.gains[0]
+            strategy[idx][1] = infoSet.gains[1]
+
+            # Normalize strategy to ensure probabilities sum to 1
+
             strategy[idx][0] /= normalization_factor
             strategy[idx][1] /= normalization_factor
 
-    for i, s in enumerate(strategy):
-        print(f"{temp[i]}: Bet = {s[0]:.2f}, Fold = {s[1]:.2f}")
+    for key, infoSet in infoSets.items():
+        infoSet.bet = strategy[temp.index(key)][0]
+        infoSet.fold = strategy[temp.index(key)][1]
+
+    if k%10000 == 0:
+        print(totalGains-lastGains)
+        lastGains = totalGains
+
+
 
 
 
