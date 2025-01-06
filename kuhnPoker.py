@@ -1,3 +1,6 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
 strategy = [[0 for x in range(2)] for y in range(12)]
 beliefs = [[0 for x in range(2)] for y in range(12)]
 utilities = [[0 for x in range(2)] for y in range(12)]
@@ -150,21 +153,19 @@ for i in range(3):
     for j in range(4):
         infoSets[CARDS[i] + MOVE[j]] = InfoSet(CARDS[i] + MOVE[j])
 
-# Perform CFR for a fixed number of iterations
-iterations = 100000  # Number of iterations to refine strategies
+
+iterations = 30000
 lastGains = 0
+regret = []
 
 for k in range(iterations):
-    # Step 1: Recalculate beliefs for all information sets
     for key, infoSet in infoSets.items():
         beliefs[temp.index(infoSet.infoSet)] = list(infoSet.findBelief().values())
 
-    # Step 2: Recalculate utilities for all information sets
     for i in range(12):
         utilities[11-i] = list(infoSets.get(temp[11-i]).findUtility().values())
 
     totalGains = 0
-    # Step 3: Update strategies based on gains
     for key, infoSet in infoSets.items():
         infoSet.calculateGains()
         idx = temp.index(infoSet.infoSet)
@@ -172,11 +173,9 @@ for k in range(iterations):
         totalGains += normalization_factor
 
         if normalization_factor > 0:
-            # Update strategy using gains
             strategy[idx][0] = infoSet.gains[0]
             strategy[idx][1] = infoSet.gains[1]
 
-            # Normalize strategy to ensure probabilities sum to 1
 
             strategy[idx][0] /= normalization_factor
             strategy[idx][1] /= normalization_factor
@@ -185,10 +184,29 @@ for k in range(iterations):
         infoSet.bet = strategy[temp.index(key)][0]
         infoSet.fold = strategy[temp.index(key)][1]
 
-    if k%10000 == 0:
+    if k%100 == 0:
+        regret.append(totalGains - lastGains)
         print(totalGains-lastGains)
         lastGains = totalGains
 
+print("Information Set Strategies:")
+print("-----------------------------------------")
+print("Info Set  | Bet/Call (%) | Fold (%)")
+print("-----------------------------------------")
+for key in temp:
+    idx = temp.index(key)
+    bet_percentage = round(strategy[idx][0] * 100, 2)
+    fold_percentage = round(strategy[idx][1] * 100, 2)
+    print(f"{key:8} | {bet_percentage:12.2f} | {fold_percentage:9.2f}")
+print("-----------------------------------------")
+
+plt.figure(figsize=(10, 6))
+plt.plot(np.arange(0, iterations, 100), regret, marker='o', linestyle='-')
+plt.title('Regret Over Iterations')
+plt.xlabel('Iterations (x100)')
+plt.ylabel('Regret')
+plt.grid(True)
+plt.show()
 
 
 
